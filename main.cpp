@@ -10,6 +10,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #include <windows.h>
+#include <shellapi.h>
 #include <ws2tcpip.h>
 
 namespace {
@@ -20,11 +21,18 @@ constexpr DWORD kGatewayStartTimeoutMs = 8000;
 constexpr DWORD kGatewayStopTimeoutMs = 5000;
 constexpr auto kGatewayPollInterval = std::chrono::milliseconds(150);
 constexpr wchar_t kInstanceMutexName[] = L"Local\\CopilotClaw.OpenClawToggle";
+constexpr wchar_t kGatewayControlUrl[] = L"http://127.0.0.1:18789/";
 constexpr wchar_t kGatewayStatusCommand[] =
-    L"powershell.exe -NonInteractive -WindowStyle Hidden -Command \"openclaw gateway status --no-color\"";
+    L"cmd.exe /d /s /c \"openclaw gateway status --no-color\"";
 constexpr wchar_t kGatewayStartCommand[] =
-    L"powershell.exe -NonInteractive -WindowStyle Hidden -Command \"openclaw gateway start\"";
+    L"cmd.exe /d /s /c \"openclaw gateway start\"";
 constexpr wchar_t kGatewayStopCommand[] =
+    L"cmd.exe /d /s /c \"openclaw gateway stop\"";
+constexpr wchar_t kGatewayStatusFallbackCommand[] =
+    L"powershell.exe -NonInteractive -WindowStyle Hidden -Command \"openclaw gateway status --no-color\"";
+constexpr wchar_t kGatewayStartFallbackCommand[] =
+    L"powershell.exe -NonInteractive -WindowStyle Hidden -Command \"openclaw gateway start\"";
+constexpr wchar_t kGatewayStopFallbackCommand[] =
     L"powershell.exe -NonInteractive -WindowStyle Hidden -Command \"openclaw gateway stop\"";
 
 class WinsockRuntime {
@@ -309,6 +317,34 @@ auto RunHiddenProcessAndWait(const wchar_t* commandLineText, DWORD timeoutMs) ->
     return result.launched && result.exited && result.exitCode == 0;
 }
 
+auto RunGatewayStatusCommand() -> ProcessRunResult {
+    auto result = RunHiddenProcess(kGatewayStatusCommand, kStatusCommandTimeoutMs, true);
+    if (result.launched && result.exited && result.exitCode == 0) {
+        return result;
+    }
+
+    return RunHiddenProcess(kGatewayStatusFallbackCommand, kStatusCommandTimeoutMs, true);
+}
+
+auto RunGatewayCommandAndWait(
+    const wchar_t* commandLineText,
+    const wchar_t* fallbackCommandLineText,
+    DWORD timeoutMs
+) -> bool {
+    if (RunHiddenProcessAndWait(commandLineText, timeoutMs)) {
+        return true;
+    }
+
+    return RunHiddenProcessAndWait(fallbackCommandLineText, timeoutMs);
+}
+
+auto OpenGatewayControlPage() -> void {
+    const auto openResult = reinterpret_cast<INT_PTR>(
+        ShellExecuteW(nullptr, L"open", kGatewayControlUrl, nullptr, nullptr, SW_SHOWNORMAL)
+    );
+    (void)openResult;
+}
+
 struct GatewayState {
     bool runtimeRunning = false;
     bool rpcProbeOk = false;
@@ -318,7 +354,7 @@ struct GatewayState {
 
 auto QueryGatewayState() -> GatewayState {
     GatewayState state;
-    const auto statusResult = RunHiddenProcess(kGatewayStatusCommand, kStatusCommandTimeoutMs, true);
+    const auto statusResult = RunGatewayStatusCommand();
     if (statusResult.launched) {
         const std::string normalized = ToLowerAscii(statusResult.output);
         state.runtimeRunning = normalized.find("runtime: running") != std::string::npos;
@@ -348,18 +384,23 @@ auto TryEnterSingleInstance() -> bool {
 
 auto ToggleGateway() -> int {
     if (ShouldStopGateway()) {
-        if (!RunHiddenProcessAndWait(kGatewayStopCommand, kGatewayStopTimeoutMs)) {
+        if (!RunGatewayCommandAndWait(kGatewayStopCommand, kGatewayStopFallbackCommand, kGatewayStopTimeoutMs)) {
             return 1;
         }
 
         return WaitForGatewayState(false, kGatewayStopTimeoutMs) ? 0 : 1;
     }
 
-    if (!RunHiddenProcessAndWait(kGatewayStartCommand, kGatewayStartTimeoutMs)) {
+    if (!RunGatewayCommandAndWait(kGatewayStartCommand, kGatewayStartFallbackCommand, kGatewayStartTimeoutMs)) {
         return 1;
     }
 
-    return WaitForGatewayState(true, kGatewayStartTimeoutMs) ? 0 : 1;
+    if (!WaitForGatewayState(true, kGatewayStartTimeoutMs)) {
+        return 1;
+    }
+
+    OpenGatewayControlPage();
+    return 0;
 }
 
 }  // namespace

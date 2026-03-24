@@ -11,7 +11,7 @@ It is designed for Microsoft PowerToys keyboard remapping:
 - Map the Copilot key to launch this executable.
 - Press once to toggle OpenClaw on or off.
 - The app shows no main window, no console window, no tray icon, and exits immediately after the toggle attempt finishes.
-- The app does not open a browser or any extra UI.
+- When the app turns the gateway on, it automatically opens the local control page.
 - This is an independent, unofficial project by `Stud-MuYi`.
 
 ## Behavior
@@ -21,6 +21,7 @@ On each launch the app:
 - probes `127.0.0.1:18789`
 - if OpenClaw appears to be running, silently runs `openclaw gateway stop`
 - otherwise, silently runs `openclaw gateway start`
+- opens `http://127.0.0.1:18789/` after a successful start
 - exits as soon as the state transition completes or times out
 
 To avoid overlapping toggles, only one instance is allowed to run at a time. If another invocation starts while one is already running, the later one exits immediately.
@@ -29,7 +30,7 @@ To avoid overlapping toggles, only one instance is allowed to run at a time. If 
 
 - Windows 11 x86_64
 - Visual Studio 2022 with MSVC and CMake 3.25 or newer
-- OpenClaw installed and available from PowerShell as `openclaw`
+- OpenClaw installed and callable from the system `PATH` as `openclaw`
 - On MSVC builds, the project uses `/std:c++latest` because current CMake/MSVC cloud runners do not expose `CXX26` as a selectable dialect yet.
 
 Verify the CLI first in PowerShell:
@@ -75,7 +76,7 @@ Important:
 4. Set the target action to launch `CopilotClaw.exe`.
 5. Save the remap.
 
-After that, pressing the remapped key will silently toggle OpenClaw.
+After that, pressing the remapped key will silently toggle OpenClaw, and successful gateway starts will open the local control page automatically.
 
 ## GitHub Actions
 
