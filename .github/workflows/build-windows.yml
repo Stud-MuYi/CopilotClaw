@@ -1,0 +1,33 @@
+name: Build CopilotClaw
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        run: cmake --build build --config Release --target CopilotClaw
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: CopilotClaw-windows-x64
+          path: build/Release/CopilotClaw.exe
