@@ -28,7 +28,7 @@ To avoid overlapping toggles, only one instance is allowed to run at a time. If 
 ## Requirements
 
 - Windows 11 x86_64
-- Visual Studio 2022 with MSVC and CMake support
+- Visual Studio 2022 with MSVC and CMake 3.25 or newer
 - OpenClaw installed and available from PowerShell as `openclaw`
 
 Verify the CLI first in PowerShell:
