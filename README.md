@@ -30,6 +30,7 @@ To avoid overlapping toggles, only one instance is allowed to run at a time. If 
 - Windows 11 x86_64
 - Visual Studio 2022 with MSVC and CMake 3.25 or newer
 - OpenClaw installed and available from PowerShell as `openclaw`
+- On MSVC builds, the project uses `/std:c++latest` because current CMake/MSVC cloud runners do not expose `CXX26` as a selectable dialect yet.
 
 Verify the CLI first in PowerShell:
 
@@ -101,7 +102,7 @@ https://github.com/Stud-MuYi/CopilotClaw
 ## Project Layout
 
 - `main.cpp`: single-process silent toggle logic
-- `CMakeLists.txt`: Windows 11 x86_64 C++26 build configuration
+- `CMakeLists.txt`: Windows 11 x86_64 build configuration using the latest available compiler mode
 - `assets/CopilotClaw.svg`: Microsoft Copilot-based SVG icon
 - `assets/CopilotClaw.ico`: embedded Windows icon built from the SVG
 - `app.rc`: Windows icon resource script
